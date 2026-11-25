@@ -1,11 +1,14 @@
-# Firefox & Tor Browser OBS APT Suite for Ubuntu 26.04 LTS
+# Firefox & Tor Browser -- Native Ubuntu 26.04 LTS Packages (OBS)
+
+Debian `3.0 (quilt)` packaging specification, openSUSE Build Service (`OBS`)
+remote distribution guide, and signed APT client configuration for **Mozilla
+Firefox** (`160.0.1-1+obs1`), **Tor Browser** (`16.0.3-1+obs1`), and the unified
+**`firefox-tor-suite`** (`1.0.0-1+obs1`) metapackage targeting **Ubuntu 26.04
+LTS (`resolute` / `xUbuntu_26.04`, `amd64`)**.
 
 > [!NOTE]
-> Native Debian (`3.0 (quilt)`) packaging, signed APT repository configuration, and hardware-accelerated desktop integration for **Mozilla Firefox** and **Tor Browser** on **Ubuntu 26.04 LTS (`resolute` / `xUbuntu_26.04`, `amd64`)**, built on the [openSUSE Build Service (OBS)](https://build.opensuse.org/project/show/home:dwolfF:browsers).
-
-This repository publishes the installation guide, APT/DEB822 repository specification, strict APT pinning rules, and verification procedures for consuming `firefox`, `tor-browser`, and the unified `firefox-tor-suite` metapackage from OBS.
-
----
+> This is an independent community packaging repository and is not affiliated
+> with or endorsed by the Mozilla Foundation, the Tor Project, or Canonical Ltd.
 
 ## Table of Contents
 
@@ -16,46 +19,46 @@ This repository publishes the installation guide, APT/DEB822 repository specific
 - [Tor Browser Isolation and Hardening](#tor-browser-isolation-and-hardening)
 - [System Requirements](#system-requirements)
 - [Installation](#installation)
-  - [1. Import the Repository Signing Key](#1-import-the-repository-signing-key)
-  - [2. Configure the DEB822 APT Source](#2-configure-the-deb822-apt-source)
-  - [3. Apply Strict APT Pinning](#3-apply-strict-apt-pinning)
-  - [4. Retire Conflicting Firefox Sources (Recommended)](#4-retire-conflicting-firefox-sources-recommended)
-  - [5. Install Packages](#5-install-packages)
-- [Verification](#verification)
-  - [APT Pinning and Signed Package Origin](#apt-pinning-and-signed-package-origin)
-  - [Firefox GPU, VA-API, Vulkan, and Wayland Checks](#firefox-gpu-va-api-vulkan-and-wayland-checks)
-  - [Tor Browser AppArmor and Launcher State Checks](#tor-browser-apparmor-and-launcher-state-checks)
+- [Post-Installation Verification](#post-installation-verification)
 - [Updating, Rollback, and Uninstallation](#updating-rollback-and-uninstallation)
-- [Packaging Architecture and Build Pipeline](#packaging-architecture-and-build-pipeline)
-- [OBS Build Links](#obs-build-links)
+- [Packaging Architecture](#packaging-architecture)
 - [License](#license)
-
----
 
 ## Overview
 
-Ubuntu 26.04 LTS replaces the native `firefox` `.deb` archive package with a Snap-redirecting transitional stub and does not ship a native, APT-managed Tor Browser package with an Ubuntu 26.04 `abi <abi/5.0>` AppArmor policy and Pluggable Transports bundled from verified upstream sources.
+Ubuntu 26.04 LTS replaces the native `firefox` `.deb` archive package with a
+Snap-redirecting transitional stub and does not provide a native, APT-managed
+Tor Browser package integrated with an Ubuntu 26.04 `abi <abi/5.0>` AppArmor
+profile and bundled Pluggable Transports.
 
-The `home:dwolfF:browsers` OBS repository solves both gaps with signed `.deb` packages compiled from pinned upstream sources:
+This repository documents how to install and pin signed `.deb` packages built
+from pinned upstream sources on isolated OBS workers and published via
+[`home:dwolfF:browsers`](https://build.opensuse.org/project/show/home:dwolfF:browsers):
 
-- **`firefox`**: Native Mozilla Firefox compiled for Ubuntu 26.04 (`amd64`), shipping preconfigured WebRender, DMABUF, Wayland/X11-EGL display integration, VA-API/Vulkan hardware decode policy, FFmpeg 8 (`libavcodec62`), OpenH264, `dav1d` AV1, JPEG XL, HEVC, WebRTC H.264 HW, and `policies.json` to delegate updates exclusively to APT.
-- **`tor-browser`**: Native Tor Browser built from pinned upstream Gecko ESR, `tor` daemon, Go Pluggable Transports (`lyrebird`, `conjure`), `moat-settings`, bundled Noto font coverage, Tor Browser Manual, and NoScript, strictly preserving upstream anti-fingerprinting defaults behind an Ubuntu 26.04 AppArmor profile.
-- **`firefox-tor-suite`**: Lockstep metapackage keeping `firefox`, `tor-browser`, and shared graphics/codec/portal recommendations aligned across upgrades.
-
----
+- **`firefox`**: Native Mozilla Firefox compiled for Ubuntu 26.04 (`amd64`),
+  with preconfigured WebRender, DMABUF, Wayland/X11-EGL display integration,
+  VA-API and Vulkan hardware decode defaults, FFmpeg 8 (`libavcodec62`),
+  OpenH264 (`libopenh264-8`), `dav1d` AV1, JPEG XL, HEVC, WebRTC H.264 HW, and
+  `policies.json` delegating browser updates to APT.
+- **`tor-browser`**: Native Tor Browser built from pinned upstream Gecko ESR,
+  `tor` daemon, Go Pluggable Transports (`lyrebird`, `conjure`), `moat-settings`,
+  bundled Noto font coverage, Tor Browser Manual, and NoScript, strictly
+  preserving upstream anti-fingerprinting defaults behind an Ubuntu 26.04
+  AppArmor policy.
+- **`firefox-tor-suite`**: Lockstep metapackage keeping `firefox`,
+  `tor-browser`, and shared graphics, codec, and portal recommendations aligned
+  across upgrades.
 
 ## Why This Repository Exists
 
-| Aspect | Ubuntu Default (`firefox` stub / manual Tor tarball) | Third-Party Generic PPA / Mozilla APT | This OBS Repository (`home:dwolfF:browsers`) |
+| Aspect | Ubuntu Default (`firefox` stub / manual Tor tarball) | Generic Upstream Mozilla APT | OBS Repository (`home:dwolfF:browsers`) |
 | --- | --- | --- | --- |
-| Delivery mechanism | Snap transitional package or unpacked `$HOME` tarball | Generic cross-distro `.deb` without Ubuntu 26.04 FFmpeg 8 / Mesa `26.0.8` alignment | Signed Ubuntu `xUbuntu_26.04` native `.deb` packages |
-| Ubuntu 26.04 library ABI | Confined Snap runtime or static upstream archive | Generic dynamic defaults; manual codec/GPU setup | Linked/declared against `libavcodec62`, `libopenh264-8`, `mesa-libgallium`, `libjxl0.11`, `libdav1d7`, `libvpx12` |
-| Firefox HW acceleration & codecs | Mixed depending on confinement & user prefs | Default upstream prefs; legacy/unset codec knobs | Curated `obs-hwaccel-codecs.js` (18 verified Firefox 160 StaticPrefs) + `/usr/bin/firefox` Wayland/EGL/NVIDIA wrapper |
-| Tor Browser isolation | Manual tarball self-updater outside APT | Typically absent or separate script wrapper | Immutable `/usr/lib/tor-browser/`, `abi <abi/5.0>` AppArmor profile, per-user `.build-id` symlink state sync, no self-updater |
-| Update discipline | Background Snap refresh / browser auto-updater | Uncoordinated browser self-updates vs APT | Enterprise policy (`DisableAppUpdate`) + disabled Tor self-updater; deterministic APT upgrades |
-| Build & release safety | Opaque upstream channel | Direct upload | Two-contour OBS workflow (`:staging` build + offline checks -> signed stable promotion) |
-
----
+| Delivery mechanism | Snap transitional stub or unpacked `$HOME` tarball | Cross-distro `.deb` without Ubuntu 26.04 FFmpeg 8 or Mesa `26.0.8` alignment | Signed Ubuntu `xUbuntu_26.04` native `.deb` packages |
+| Ubuntu 26.04 library ABI | Confined Snap runtime or static archive | Generic defaults; manual codec and GPU driver setup | Linked and declared against `libavcodec62`, `libopenh264-8`, `mesa-libgallium`, `libjxl0.11`, `libdav1d7`, `libvpx12` |
+| Firefox HW acceleration & codecs | Varies by confinement and user prefs | Default upstream prefs; legacy or unset codec knobs | Curated `obs-hwaccel-codecs.js` (18 verified Firefox 160 StaticPrefs) plus `/usr/bin/firefox` Wayland/EGL/NVIDIA wrapper |
+| Tor Browser isolation | Manual tarball self-updater outside APT | Absent from Mozilla APT | Immutable `/usr/lib/tor-browser/`, `abi <abi/5.0>` AppArmor profile, per-user `.build-id` symlink sync, no self-updater |
+| Update discipline | Background Snap refresh or browser auto-updater | Browser updates decoupled from distro ABI | `DisableAppUpdate` in `policies.json` + disabled Tor self-updater; deterministic APT upgrades |
+| Build & release safety | Opaque upstream channel | Direct upload | Two-contour OBS workflow (`:staging` build + offline checks before stable promotion) |
 
 ## Packages and Version Matrix
 
@@ -63,236 +66,268 @@ The `home:dwolfF:browsers` OBS repository solves both gaps with signed `.deb` pa
 | --- | --- | --- | --- |
 | `firefox` | Mozilla Firefox `160.0.1` | `160.0.1-1+obs1` | Native browser with FFmpeg 8, OpenH264, VA-API/Vulkan/Wayland defaults, and APT update policy |
 | `tor-browser` | Tor Browser `16.0.3` (`153.8.0esr`, `tor` `0.4.9.17`, `lyrebird` `0.10.0`, `conjure`, `noscript` `13.6.39.1984`) | `16.0.3-1+obs1` | Hardened Tor Browser bundle with AppArmor `abi/5.0` profile and zero telemetry/VA-API anti-fingerprinting leaks |
-| `firefox-tor-suite` | Suite lockstep metapackage | `1.0.0-1+obs1` | Enforces synchronized minimum versions of `firefox` and `tor-browser` plus recommended GPU/codec/portal drivers |
+| `firefox-tor-suite` | Suite lockstep metapackage | `1.0.0-1+obs1` | Enforces synchronized minimum versions of `firefox` and `tor-browser` plus recommended GPU, codec, and portal packages |
 
 > [!NOTE]
-> Staging builds compile an updated `cbindgen` (`0.29.4-1+obs1`) privately inside the `:staging` contour because Ubuntu 26.04 `universe` ships `0.29.2` while Gecko requires `>= 0.29.4`. It is a build-time dependency only and is never published to the stable APT repository.
-
----
+> Staging builds compile an updated `cbindgen` (`0.29.4-1+obs1`) privately
+> inside `:staging` because Ubuntu 26.04 `universe` ships `0.29.2` while
+> Gecko requires `>= 0.29.4`. It is a build-time dependency only and is never
+> published to the stable APT repository.
 
 ## Firefox Hardware Acceleration and Codec Matrix
 
-The `firefox` package installs `/usr/lib/firefox/defaults/pref/obs-hwaccel-codecs.js` containing 18 verified Firefox 160 StaticPrefs (the legacy `media.ffmpeg.vaapi.enabled` preference removed upstream is intentionally omitted):
+The `firefox` package installs
+`/usr/lib/firefox/defaults/pref/obs-hwaccel-codecs.js` containing 18 verified
+Firefox 160 `StaticPrefs` (the deprecated `media.ffmpeg.vaapi.enabled` toggle
+removed upstream is intentionally omitted):
 
 | Subsystem | Enabled Preferences / Mechanism | Runtime Dependencies / Driver Support |
 | --- | --- | --- |
 | IPC & Compositor | `dom.ipc.forkserver.enable`, `gfx.webrender.all`, `gfx.canvas.accelerated`, `dom.webgpu.enabled` | `libdrm2`, `libgbm1`, `libegl1`, `libgl1`, `libgles2`, `libvulkan1`, `libpci3`, `mesa-vulkan-drivers` |
-| Wayland & DMABUF | `widget.dmabuf.enabled`, `widget.wayland.fractional-scale.enabled`, `widget.wayland.vsync.enabled`; wrapper exports `MOZ_ENABLE_WAYLAND=1` on Wayland or `MOZ_X11_EGL=1` on X11 | `pipewire`, `xdg-desktop-portal`, `xdg-desktop-portal-gtk \| kde \| gnome` |
-| FFmpeg & H.264 / HEVC | `media.ffmpeg.enabled`, `media.ffmpeg.encoder.enabled`, `media.ffmpeg.allow-openh264`, `media.webrtc.hw.h264.enabled`, `media.hevc.enabled` | `libavcodec-extra62 \| libavcodec62`, `libopenh264-8` |
-| Hardware Video Decode | `media.hardware-video-decoding.enabled`, `media.hardware-video-decoding-vulkan.enabled` | `libva2`, `libva-drm2`, `libva-wayland2`, `libva-x11-2`, `mesa-libgallium`, `intel-media-va-driver-non-free \| intel-media-va-driver`, `i965-va-driver`, `nvidia-vaapi-driver`, `va-driver-all` |
+| Wayland & DMABUF | `widget.dmabuf.enabled`, `widget.wayland.fractional-scale.enabled`, `widget.wayland.vsync.enabled`; launcher exports `MOZ_ENABLE_WAYLAND=1` on Wayland or `MOZ_X11_EGL=1` on X11 | `pipewire`, `xdg-desktop-portal`, `xdg-desktop-portal-gtk` / `kde` / `gnome` |
+| FFmpeg & H.264 / HEVC | `media.ffmpeg.enabled`, `media.ffmpeg.encoder.enabled`, `media.ffmpeg.allow-openh264`, `media.webrtc.hw.h264.enabled`, `media.hevc.enabled` | `libavcodec-extra62` / `libavcodec62`, `libopenh264-8` |
+| Hardware Video Decode | `media.hardware-video-decoding.enabled`, `media.hardware-video-decoding-vulkan.enabled` | `libva2`, `libva-drm2`, `libva-wayland2`, `libva-x11-2`, `mesa-libgallium`, `intel-media-va-driver-non-free` / `intel-media-va-driver`, `i965-va-driver`, `nvidia-vaapi-driver`, `va-driver-all` |
 | Modern Royalty-Free Media | `media.av1.enabled`, `media.av1.use-dav1d`, `image.jxl.enabled`, `image.avif.sequence.enabled` | `libdav1d7`, `libaom3`, `libvpx12`, `libjxl0.11`, `libwebp7`, `libopus0`, `libvorbis0a` |
-| NVIDIA VA-API Compatibility | Wrapper auto-detects `/proc/driver/nvidia/version` + `nvidia_drv_video.so` and exports `LIBVA_DRIVER_NAME=nvidia` and `MOZ_DISABLE_RDD_SANDBOX=1` (overridable via environment) | `nvidia-vaapi-driver` (never disables content sandboxing with `--no-sandbox`) |
+| NVIDIA VA-API Compatibility | Launcher detects `/proc/driver/nvidia/version` + `nvidia_drv_video.so` and sets `LIBVA_DRIVER_NAME=nvidia` and `MOZ_DISABLE_RDD_SANDBOX=1` (overridable via env) | `nvidia-vaapi-driver` (never weakens content sandboxing with `--no-sandbox`) |
 
-On Ubuntu 26.04, Mesa `26.0.8` folds `radeonsi_drv_video.so`, `nouveau_drv_video.so`, and `virtio_gpu_drv_video.so` directly into `mesa-libgallium` (`mesa-va-drivers` does not exist on Ubuntu 26.04). The package dependencies reflect that split natively.
-
----
+On Ubuntu 26.04, Mesa `26.0.8` folds `radeonsi_drv_video.so`,
+`nouveau_drv_video.so`, and `virtio_gpu_drv_video.so` directly into
+`mesa-libgallium` (`mesa-va-drivers` does not exist on Ubuntu 26.04). The
+package dependencies declare that split explicitly.
 
 ## Tor Browser Isolation and Hardening
 
-Tor Browser packaging prioritizes browser fingerprint uniformity and compartmentalization over host desktop codec/GPU integration:
+Tor Browser packaging prioritizes fingerprint uniformity and host isolation
+over desktop codec or GPU tuning:
 
-- **Strict upstream anti-fingerprinting defaults:** No VA-API decode, no WebGPU override, no hardware codec preference file, and no host font overrides are injected. Bundled Noto, CJK, Emoji, and UI fonts remain self-contained inside `/usr/lib/tor-browser/`.
-- **Immutable system bundle + writable user state:** The browser tree resides read-only under `/usr/lib/tor-browser/`, while `/usr/bin/tor-browser` initializes `${XDG_DATA_HOME:-$HOME/.local/share}/tor-browser/app/TorBrowser/Data/{Browser,Tor}` with `0700` permissions and atomically reconciles symlinks whenever `.build-id` changes after an APT upgrade.
-- **Ubuntu 26.04 AppArmor enforcement:** Installs `/etc/apparmor.d/tor-browser` targeting `abi <abi/5.0>`.
-- **No self-updater races:** Compiled with `--disable-updater` and `--disable-base-browser-update` so system updates happen exclusively via signed `apt` transactions.
-
----
+- **Strict upstream anti-fingerprinting defaults:** No VA-API decode, no WebGPU
+  override, no custom hardware codec prefs, and no system font overrides are
+  injected. Bundled Noto, CJK, Emoji, and UI fonts remain self-contained inside
+  `/usr/lib/tor-browser/`.
+- **Immutable system bundle and writable user state:** Program files stay
+  read-only under `/usr/lib/tor-browser/`, while `/usr/bin/tor-browser` manages
+  writable state under
+  `${XDG_DATA_HOME:-$HOME/.local/share}/tor-browser/app/TorBrowser/Data/{Browser,Tor}`
+  (`0700`) and atomically reconciles symlinks whenever `.build-id` changes after
+  an APT upgrade.
+- **Ubuntu 26.04 AppArmor enforcement:** Installs `/etc/apparmor.d/tor-browser`
+  targeting `abi <abi/5.0>`.
+- **No in-app self-updater races:** Compiled with `--disable-updater` and
+  `--disable-base-browser-update` so updates are delivered cleanly through APT.
 
 ## System Requirements
 
-- **OS:** Ubuntu 26.04 LTS (`resolute` / `xUbuntu_26.04`)
-- **Architecture:** `amd64` (`x86_64`)
-- **Privileges:** `sudo` access for configuring `/etc/apt/` and installing packages
-- **Optional GPU drivers:** Ubuntu `mesa-libgallium`, `mesa-vulkan-drivers`, `intel-media-va-driver` / `intel-media-va-driver-non-free`, `i965-va-driver`, or `nvidia-vaapi-driver` matching your GPU vendor
-
----
+| Requirement | Supported Target |
+| --- | --- |
+| Operating System | Ubuntu 26.04 LTS (`resolute` / `xUbuntu_26.04`) and official flavours |
+| Architecture | `amd64` (`x86_64`) |
+| Ubuntu Components | `main` and `universe` enabled in `/etc/apt/sources.list.d/ubuntu.sources` |
+| Privileges | `sudo` access for configuring `/etc/apt/`, AppArmor, and packages |
+| Optional GPU Drivers | `mesa-libgallium`, `mesa-vulkan-drivers`, `intel-media-va-driver` / `intel-media-va-driver-non-free`, `i965-va-driver`, or `nvidia-vaapi-driver` |
 
 ## Installation
 
-### 1. Import the Repository Signing Key
+1. **Install prerequisites and import the OBS repository signing key:**
 
-Download and verify the ASCII-armored OBS release key into `/etc/apt/keyrings/home_dwolfF_browsers.gpg`:
+   ```bash
+   sudo apt-get update
+   sudo apt-get install -y ca-certificates curl gpg
+   sudo install -d -m 0755 /etc/apt/keyrings
+   curl -fsSL https://download.opensuse.org/repositories/home:/dwolfF:/browsers/xUbuntu_26.04/Release.key \
+     | sudo gpg --dearmor --yes -o /etc/apt/keyrings/home_dwolfF_browsers.gpg
+   sudo chmod 0644 /etc/apt/keyrings/home_dwolfF_browsers.gpg
+   ```
 
-```bash
-sudo install -d -m 0755 /etc/apt/keyrings
-curl -fsSL https://download.opensuse.org/repositories/home:/dwolfF:/browsers/xUbuntu_26.04/Release.key \
-  | gpg --dearmor \
-  | sudo tee /etc/apt/keyrings/home_dwolfF_browsers.gpg >/dev/null
-sudo chmod 0644 /etc/apt/keyrings/home_dwolfF_browsers.gpg
-```
+2. **Verify the signing key fingerprint before trusting packages:**
 
-Verify the key fingerprint before trusting packages:
+   ```bash
+   gpg --show-keys --with-fingerprint /etc/apt/keyrings/home_dwolfF_browsers.gpg
+   ```
 
-```bash
-gpg --show-keys --with-fingerprint /etc/apt/keyrings/home_dwolfF_browsers.gpg
-```
+   Expected fingerprint (`home:dwolfF OBS Project <home:dwolfF@build.opensuse.org>`):
 
-Expected fingerprint:
+   ```text
+   C106 E46D E757 8257 F4CD  62C9 6AE3 5907 289D 3BDC
+   ```
 
-```text
-C106 E46D E757 8257 F4CD  62C9 6AE3 5907 289D 3BDC
-```
+3. **Configure the DEB822 APT source:**
 
-### 2. Configure the DEB822 APT Source
+   ```bash
+   sudo tee /etc/apt/sources.list.d/home_dwolfF_browsers.sources >/dev/null <<'EOF'
+   Types: deb
+   URIs: https://download.opensuse.org/repositories/home:/dwolfF:/browsers/xUbuntu_26.04/
+   Suites: /
+   Architectures: amd64
+   Signed-By: /etc/apt/keyrings/home_dwolfF_browsers.gpg
+   EOF
+   ```
 
-Create `/etc/apt/sources.list.d/home_dwolfF_browsers.sources`:
+4. **Apply strict APT pinning rules:**
 
-```bash
-sudo tee /etc/apt/sources.list.d/home_dwolfF_browsers.sources >/dev/null <<'EOF'
-Types: deb
-URIs: https://download.opensuse.org/repositories/home:/dwolfF:/browsers/xUbuntu_26.04/
-Suites: /
-Signed-By: /etc/apt/keyrings/home_dwolfF_browsers.gpg
-Architectures: amd64
-EOF
-```
+   ```bash
+   sudo tee /etc/apt/preferences.d/firefox-tor-ubuntu-obs >/dev/null <<'EOF'
+   Explanation: Prefer native OBS Firefox, Tor Browser, and suite packages
+   Package: firefox firefox-l10n-* tor-browser firefox-tor-suite
+   Pin: origin download.opensuse.org
+   Pin-Priority: 1002
 
-### 3. Apply Strict APT Pinning
+   Explanation: Block Ubuntu transitional Snap Firefox stubs and locale wrappers
+   Package: firefox firefox-*
+   Pin: release o=Ubuntu
+   Pin-Priority: -1
 
-Create `/etc/apt/preferences.d/firefox-tor-ubuntu-obs` to pin OBS packages above default archives while blocking Ubuntu's transitional Snap stub and third-party Mozilla APT overrides:
+   Explanation: Supersede third-party Mozilla APT repository when present
+   Package: firefox firefox-l10n-*
+   Pin: origin packages.mozilla.org
+   Pin-Priority: -1
+   EOF
+   ```
 
-```bash
-sudo tee /etc/apt/preferences.d/firefox-tor-ubuntu-obs >/dev/null <<'EOF'
-Explanation: Prefer native OBS Firefox, Tor Browser, and suite packages
-Package: firefox firefox-l10n-* tor-browser firefox-tor-suite
-Pin: origin download.opensuse.org
-Pin-Priority: 1002
+   > [!IMPORTANT]
+   > `Pin-Priority: 1002` allows clean cross-repository migration from higher
+   > upstream version numbers (`161.0~build1`), while `-1` prevents Ubuntu Snap
+   > stubs and `packages.mozilla.org` overrides from competing with OBS builds.
 
-Explanation: Block Ubuntu transitional Snap Firefox stubs and locale wrappers
-Package: firefox firefox-*
-Pin: release o=Ubuntu
-Pin-Priority: -1
+5. **Retire conflicting Firefox sources (optional):**
 
-Explanation: Supersede third-party Mozilla APT repository when present
-Package: firefox firefox-l10n-*
-Pin: origin packages.mozilla.org
-Pin-Priority: -1
-EOF
-```
+   If Ubuntu's Snap Firefox or the third-party `packages.mozilla.org` APT source
+   is present on the host, you can clean them up now:
 
-### 4. Retire Conflicting Firefox Sources (Recommended)
+   ```bash
+   if command -v snap >/dev/null 2>&1 && snap list firefox >/dev/null 2>&1; then
+     sudo snap remove --purge firefox
+   fi
+   sudo rm -f /etc/apt/sources.list.d/mozilla.list /etc/apt/sources.list.d/mozilla.sources
+   ```
 
-If your system previously had Ubuntu's Snap Firefox or Mozilla's upstream APT source (`packages.mozilla.org`), clean them up so updates are unambiguous:
+   > [!NOTE]
+   > If `firefox-l10n-*` from `packages.mozilla.org` was previously installed,
+   > APT removes that stub during migration. Additional Firefox UI languages
+   > can be installed directly inside Firefox via **Settings -> General ->
+   > Language**.
 
-```bash
-# Optional: remove Ubuntu Snap Firefox if installed
-if command -v snap >/dev/null 2>&1 && snap list firefox >/dev/null 2>&1; then
-  sudo snap remove --purge firefox
-fi
+6. **Refresh APT metadata, install `firefox-tor-suite`, and load the Tor Browser AppArmor profile:**
 
-# Refresh APT metadata after applying pinning
-sudo apt-get update
-```
+   ```bash
+   sudo apt-get update
+   sudo apt-get install --allow-downgrades -y firefox-tor-suite
+   sudo apparmor_parser -r /etc/apparmor.d/tor-browser
+   ```
 
-### 5. Install Packages
+   If you only want one browser instead of `firefox-tor-suite`, install it directly:
 
-Install the full suite (recommended) or individual browsers:
+   ```bash
+   # Firefox only:
+   # sudo apt-get install --allow-downgrades -y firefox
 
-```bash
-# Install both Firefox and Tor Browser in lockstep
-sudo apt-get install --allow-downgrades firefox-tor-suite
+   # Tor Browser only:
+   # sudo apt-get install -y tor-browser
+   # sudo apparmor_parser -r /etc/apparmor.d/tor-browser
+   ```
 
-# Or install individually
-sudo apt-get install firefox
-sudo apt-get install tor-browser
-```
+## Post-Installation Verification
 
-> [!NOTE]
-> Use `--allow-downgrades` on first migration if a higher-numbered package from `packages.mozilla.org` is already installed on the host.
+Run these checks after installing the packages:
 
----
+1. **Confirm APT pinning and OBS package origins (`1002` priority vs `-1` blocked):**
 
-## Verification
+   ```bash
+   apt-cache policy firefox tor-browser firefox-tor-suite
+   ```
 
-### APT Pinning and Signed Package Origin
+2. **Verify Firefox policies, codec prefs, VA-API, and Vulkan support:**
 
-Confirm candidate versions, `1002` priority from `download.opensuse.org`, and `-1` suppression of Ubuntu / Mozilla origins:
+   ```bash
+   test -f /usr/lib/firefox/defaults/pref/obs-hwaccel-codecs.js
+   test -f /usr/lib/firefox/distribution/policies.json
+   vainfo
+   vulkaninfo --summary
+   ```
 
-```bash
-apt-cache policy firefox tor-browser firefox-tor-suite
-```
+   Inside Firefox, open `about:support` (check **Window Protocol**, **WebRender**
+   compositing, and hardware video decode / codec tables) and `about:policies`
+   (confirm `DisableAppUpdate` is active).
 
-### Firefox GPU, VA-API, Vulkan, and Wayland Checks
+3. **Verify Tor Browser AppArmor enforcement and isolated user state:**
 
-Verify installed policy, wrapper prefs, codec/VA-API libraries, and Vulkan enumeration:
+   ```bash
+   sudo aa-status | grep tor-browser
+   ```
 
-```bash
-test -f /usr/lib/firefox/defaults/pref/obs-hwaccel-codecs.js
-test -f /usr/lib/firefox/distribution/policies.json
-vainfo
-vulkaninfo --summary
-```
+   After launching `tor-browser` once, verify isolated `0700` state creation:
 
-Inside Firefox, open `about:support` and verify:
-
-- **Window Protocol:** `wayland` (on Wayland sessions) or `x11` with EGL compositing
-- **Compositing:** `WebRender`
-- **Hardware Video Decoding / WebGPU / Codecs:** `H264`, `VP9`, `AV1`, `HEVC` hardware/software capabilities matching installed drivers
-
-### Tor Browser AppArmor and Launcher State Checks
-
-Reload AppArmor profiles if needed and verify `/etc/apparmor.d/tor-browser` is enforced:
-
-```bash
-sudo apparmor_parser -r /etc/apparmor.d/tor-browser
-sudo aa-status | grep tor-browser
-```
-
-Launch `tor-browser` once and confirm isolated state creation under `${XDG_DATA_HOME:-$HOME/.local/share}/tor-browser/app/TorBrowser/Data/`.
-
----
+   ```bash
+   ls -ld "${XDG_DATA_HOME:-$HOME/.local/share}/tor-browser/app/TorBrowser/Data"
+   ```
 
 ## Updating, Rollback, and Uninstallation
 
-### Regular Updates
+### Updating
 
-Both browsers disable internal auto-updaters (`policies.json` `DisableAppUpdate` and Tor's `--disable-updater`) and receive updates strictly via standard APT upgrades:
+Both browsers disable internal self-updaters (`policies.json` `DisableAppUpdate`
+and Tor's `--disable-updater`) and receive updates strictly through APT:
 
 ```bash
-sudo apt-get update && sudo apt-get upgrade
+sudo apt-get update
+sudo apt-get upgrade
 ```
 
-### Uninstalling Packages and Repository Configuration
+### Rollback
+
+If an earlier `+obs` build is present in the repository or local APT cache,
+list available versions and pin/install a specific release:
 
 ```bash
-# Remove packages
-sudo apt-get purge firefox-tor-suite firefox tor-browser
-sudo apt-get autoremove
+apt-cache madison firefox tor-browser firefox-tor-suite
+sudo apt-get install --allow-downgrades -y firefox=<previous-version>
+```
 
-# Remove repository source, pin rules, and GPG key
+### Full Uninstallation
+
+Remove the packages, repository source, pinning rules, and signing key:
+
+```bash
+sudo apt-get purge -y firefox-tor-suite firefox tor-browser
+sudo apt-get autoremove -y
 sudo rm -f /etc/apt/sources.list.d/home_dwolfF_browsers.sources \
            /etc/apt/preferences.d/firefox-tor-ubuntu-obs \
            /etc/apt/keyrings/home_dwolfF_browsers.gpg
 sudo apt-get update
 ```
 
-User profiles under `~/.mozilla/firefox/` and `${XDG_DATA_HOME:-$HOME/.local/share}/tor-browser/` are preserved unless explicitly removed.
+User profiles under `~/.mozilla/firefox/` and
+`${XDG_DATA_HOME:-$HOME/.local/share}/tor-browser/` remain untouched unless
+explicitly removed.
 
----
+## Packaging Architecture
 
-## Packaging Architecture and Build Pipeline
+Packages follow a two-contour OBS workflow:
 
-The packaging workflow is organized into two isolated OBS contours:
+1. **Staging ([`home:dwolfF:browsers:staging`](https://build.opensuse.org/project/show/home:dwolfF:browsers:staging)):**
+   Unpublished `xUbuntu_26.04` (`x86_64`) build environment resolving
+   dependencies in strict order (`Ubuntu:26.04/update` -> `universe-update` ->
+   `standard` -> `universe`) with Ubuntu 26.04 `rustc-1.97`, `cargo-1.97`,
+   `clang-22`, `lld-22`, `llvm-22`, bundled `NSS 3.131`, and system `zlib`.
+   Compiler cache wrappers are strictly prohibited (`Build-Conflicts: ccache, sccache`, `--without-ccache`). Built `.deb` packages undergo offline
+   container validation (`--network none` on `ubuntu:26.04`) before promotion.
+2. **Release & Promotion ([`home:dwolfF:browsers`](https://build.opensuse.org/project/show/home:dwolfF:browsers)):**
+   Direct building is disabled; verified packages enter only through controlled
+   OBS release with `PublishFlags: nofailedpackages`. `firefox-tor-suite` is
+   promoted only when compatible `firefox` and `tor-browser` builds are both
+   published in stable.
 
-1. **Staging Contour (`home:dwolfF:browsers:staging`):**
-   - `sourceaccess=disable`, `publish=disable`, building `xUbuntu_26.04` (`x86_64`) against Ubuntu 26.04 updates and universe (`rustc-1.97`, `cargo-1.97`, `clang-22`, `lld-22`, `llvm-22`, `libclang-22-dev`, bundled `NSS 3.131`, system `zlib`).
-   - Enforces a strict no-`ccache` policy (`Build-Conflicts: ccache, sccache`, `--without-ccache`, `unexport CCACHE`).
-   - Built `.deb` artifacts undergo offline dpkg/layout/dependency/policy verification inside an isolated `--network none` `ubuntu:26.04` container before promotion.
-2. **Stable Publishing Contour (`home:dwolfF:browsers`):**
-   - Direct building disabled (`build=disable`), publishing enabled (`publish=enable`).
-   - Receives verified binaries via manual OBS release only after staging checks pass (`PublishFlags: nofailedpackages`).
-   - `firefox-tor-suite` is only promoted when compatible `firefox` and `tor-browser` builds are both present in stable.
+Published OBS links:
 
----
-
-## OBS Build Links
-
-- **Stable Project & Package Status:** [home:dwolfF:browsers](https://build.opensuse.org/project/show/home:dwolfF:browsers)
-- **APT Repository Index (`xUbuntu_26.04`):** [download.opensuse.org/repositories/home:/dwolfF:/browsers/xUbuntu_26.04/](https://download.opensuse.org/repositories/home:/dwolfF:/browsers/xUbuntu_26.04/)
-- **Staging Project:** [home:dwolfF:browsers:staging](https://build.opensuse.org/project/show/home:dwolfF:browsers:staging)
-
----
+- [OBS Project: `home:dwolfF:browsers`](https://build.opensuse.org/project/show/home:dwolfF:browsers)
+- [APT Repository Index (`xUbuntu_26.04`)](https://download.opensuse.org/repositories/home:/dwolfF:/browsers/xUbuntu_26.04/)
+- [OBS Package: `firefox`](https://build.opensuse.org/package/show/home:dwolfF:browsers/firefox)
+- [OBS Package: `tor-browser`](https://build.opensuse.org/package/show/home:dwolfF:browsers/tor-browser)
+- [OBS Package: `firefox-tor-suite`](https://build.opensuse.org/package/show/home:dwolfF:browsers/firefox-tor-suite)
+- [OBS Staging Project: `home:dwolfF:browsers:staging`](https://build.opensuse.org/project/show/home:dwolfF:browsers:staging)
 
 ## License
 
-Packaging metadata, documentation, and launcher/configuration assets are licensed under the **Mozilla Public License 2.0 (MPL-2.0)** unless otherwise noted in [LICENSE](LICENSE). Upstream Mozilla Firefox and Tor Browser source code remains subject to their respective upstream licenses.
+Packaging metadata, documentation, and launcher/configuration assets in this
+repository are licensed under the **Mozilla Public License 2.0 (MPL-2.0)**
+([LICENSE](LICENSE)). Upstream Mozilla Firefox and Tor Browser source code
+remains subject to their respective upstream licenses.
